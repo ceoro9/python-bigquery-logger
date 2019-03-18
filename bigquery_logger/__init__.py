@@ -1,27 +1,23 @@
-import logging
 from logging.handlers import BufferingHandler
+
+from google.cloud import bigquery
 
 
 class BigQueryClient(object):
 
+    @classmethod
+    def new(cls, dataset_id, table_id):
+        return cls(None, None, dataset_id, table_id)
+
     def __init__(self, service, project_id, dataset_id, table_id):
-        self.service = service
-        self.project_id = project_id
-        self.dataset_id = dataset_id
-        self.table_id = table_id
+        self.client = bigquery.Client()
+        self.dataset_ref = self.client.dataset(dataset_id)
+        self.table_ref = self.dataset_ref.table(table_id)
 
     def _make_request(self, method, body):
         """Make request to API endpoint
         """
-        tabledata = self.service.tabledata()
-        response = tabledata.insertAll(
-            projectId=self.project_id,
-            datasetId=self.dataset_id,
-            tableId=self.table_id,
-            body=body
-        ).execute()
-
-        return response
+        return self.client.insert_rows_json(self.table_ref, [row['json'] for row in body['rows']])
 
     def insertall(self, rows):
         """
@@ -46,7 +42,7 @@ class BigQueryClient(object):
 
 def get_default_service():
     from oauth2client import client
-    from apiclient.discovery import build
+    from googleapiclient.discovery import build
     import httplib2
 
     credentials = client.GoogleCredentials.get_application_default()
@@ -55,6 +51,7 @@ def get_default_service():
 
     return service
 
+
 class BigQueryHandler(BufferingHandler):
     """A logging handler that posts messages to a BigQuery channel!
 
@@ -62,13 +59,9 @@ class BigQueryHandler(BufferingHandler):
     http://docs.python.org/2/library/logging.html#handler-objects
     """
 
-    def __init__(self, service, project_id, dataset_id, table_id, capacity=200):
+    def __init__(self, dataset_id, table_id, capacity=200):
         super(BigQueryHandler, self).__init__(capacity)
-
-        if service == "default":
-            service = get_default_service()
-
-        self.client = BigQueryClient(service, project_id, dataset_id, table_id)
+        self.client = BigQueryClient.new(dataset_id, table_id)
 
     fields = {'created', 'filename', 'funcName', 'levelname', 'levelno', 'module', 'name', 'pathname', 'process', 'processName', 'relativeCreated', 'thread', 'threadName'}
 
