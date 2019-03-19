@@ -40,18 +40,6 @@ class BigQueryClient(object):
         return self.insertall([{'logging': text}])
 
 
-def get_default_service():
-    from oauth2client import client
-    from googleapiclient.discovery import build
-    import httplib2
-
-    credentials = client.GoogleCredentials.get_application_default()
-    http = credentials.authorize(httplib2.Http())
-    service = build('bigquery', 'v2', http=http)
-
-    return service
-
-
 class BigQueryHandler(BufferingHandler):
     """A logging handler that posts messages to a BigQuery channel!
 
@@ -63,7 +51,21 @@ class BigQueryHandler(BufferingHandler):
         super(BigQueryHandler, self).__init__(capacity)
         self.client = BigQueryClient.new(dataset_id, table_id)
 
-    fields = {'created', 'filename', 'funcName', 'levelname', 'levelno', 'module', 'name', 'pathname', 'process', 'processName', 'relativeCreated', 'thread', 'threadName'}
+    fields = (
+        'created',
+        'filename',
+        'funcName',
+        'levelname',
+        'levelno',
+        'module',
+        'name',
+        'pathname',
+        'process',
+        'processName',
+        'relativeCreated',
+        'thread',
+        'threadName',
+    )
 
     def mapLogRecord(self, record):
         temp = { key: getattr(record, key) for key in self.fields }
